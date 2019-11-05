@@ -298,5 +298,66 @@ static_assert(std::is_same_v<
     TList<Long<0>, TList<Long<1>, TList<Long<2>, TList<Long<3>, Nothing>>>>
 >);
 
+template<bool ShouldBeRemove, class List, template<class> typename If>
+struct tlist_remove_all_if_helper : tlist_add<tlist_head_t<List>, typename tlist_remove_all_if_helper<If<tlist_get_t<List, 1>>::value, tlist_tail_t<List>, If>::type> {};
+
+template<class List, template<class> typename If>
+struct tlist_remove_all_if_helper<true, List, If> : tlist_remove_all_if_helper<If<tlist_get_t<List, 1>>::value, tlist_tail_t<List>, If> {};
+
+template<bool ShouldBeRemove, template<class>typename If>
+struct tlist_remove_all_if_helper<ShouldBeRemove, Nothing, If> : Nothing {};
+
+template<class List, template<class> typename If>
+struct tlist_remove_all_if : tlist_remove_all_if_helper<If<tlist_head_t<List>>::value, List, If> {};
+
+template<class List1, class List2>
+struct tlist_concat : tlist_add<tlist_head_t<List1>, typename tlist_concat<tlist_tail_t<List1>, List2>::type> {};
+
+template<class List2>
+struct tlist_concat<Nothing, List2> {
+    using type = List2;
+};
+
+template<class List1, class List2>
+using tlist_concat_t = typename tlist_concat<List1, List2>::type;
+
+static_assert(std::is_same_v<tlist_concat_t<TList<Long<0>, Nothing>, TList<Long<1>, Nothing>>, TList<Long<0>, TList<Long<1>, Nothing>>>);
+static_assert(std::is_same_v<
+    tlist_concat_t<
+        TList<
+            Long<0>,
+            TList<
+                Long<1>,
+                Nothing
+            >
+        >,
+        TList<
+            Long<2>,
+            TList<
+                Long<3>,
+                Nothing
+            >
+        >
+    >,
+    TList<
+        Long<0>,
+        TList<
+            Long<1>,
+            TList<
+                Long<2>,
+                TList<
+                    Long<3>,
+                    Nothing
+                >
+            >
+        >
+    >
+>);
+
+template<template<class>typename Func, class List>
+struct tlist_map : tlist_add<typename Func<tlist_head_t<List>>::type, typename tlist_map<Func, tlist_tail_t<List>>::type> {};
+
+template<template<class>typename Func>
+struct tlist_map<Func, Nothing> : Nothing {};
 #endif
 
