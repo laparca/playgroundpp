@@ -165,15 +165,15 @@ struct tlist_has_element : std::conditional_t<
     > {};
 
 template<class Type>
-struct tlist_has_element<Type, Nothing> : std::false_type {};
+struct tlist_has_element<Type, EmptyList> : std::false_type {};
 
-static_assert(tlist_has_element_v<Long<0>, Nothing> == false);
-static_assert(tlist_has_element_v<Long<0>, TList<Long<0>, Nothing>> == true);
-static_assert(tlist_has_element_v<Long<0>, TList<Long<0>, TList<Long<1>, Nothing>>> == true);
-static_assert(tlist_has_element_v<Long<0>, TList<Long<1>, TList<Long<0>, Nothing>>> == true);
-static_assert(tlist_has_element_v<Long<0>, TList<Long<1>, TList<Long<2>, Nothing>>> == false);
-static_assert(tlist_has_element_v<move_t<Right, Long<0x1234'5678'9abc'de0f>>, Nothing> == false);
-static_assert(tlist_has_element_v<move_t<Right, Long<0x1234'5678'9abc'de0f>>, TList<Long<0x1234'5678'9abc'def0>, Nothing>> == true);
+static_assert(tlist_has_element_v<Long<0>, EmptyList> == false);
+static_assert(tlist_has_element_v<Long<0>, TList<Long<0>, EmptyList>> == true);
+static_assert(tlist_has_element_v<Long<0>, TList<Long<0>, TList<Long<1>, EmptyList>>> == true);
+static_assert(tlist_has_element_v<Long<0>, TList<Long<1>, TList<Long<0>, EmptyList>>> == true);
+static_assert(tlist_has_element_v<Long<0>, TList<Long<1>, TList<Long<2>, EmptyList>>> == false);
+static_assert(tlist_has_element_v<move_t<Right, Long<0x1234'5678'9abc'de0f>>, EmptyList> == false);
+static_assert(tlist_has_element_v<move_t<Right, Long<0x1234'5678'9abc'de0f>>, TList<Long<0x1234'5678'9abc'def0>, EmptyList>> == true);
 
 template<class List>
 struct tlist_size {
@@ -181,13 +181,13 @@ struct tlist_size {
 };
 
 template<>
-struct tlist_size<Nothing> {
+struct tlist_size<EmptyList> {
     static constexpr uint64_t value = 0;
 };
 
-static_assert(tlist_size_v<Nothing> == 0);
-static_assert(tlist_size_v<TList<Long<0>, Nothing>> == 1);
-static_assert(tlist_size_v<TList<Long<1>, TList<Long<0>, Nothing>>> == 2);
+static_assert(tlist_size_v<EmptyList> == 0);
+static_assert(tlist_size_v<TList<Long<0>, EmptyList>> == 1);
+static_assert(tlist_size_v<TList<Long<1>, TList<Long<0>, EmptyList>>> == 2);
 
 template<class List>
 struct tlist_head {
@@ -206,10 +206,10 @@ template<class List>
 struct tlist_get<List, 0> : List {};
 
 template<int P>
-struct tlist_get<Nothing, P> : Nothing {};
+struct tlist_get<EmptyList, P> : EmptyList {};
 
 template<>
-struct tlist_get<Nothing, 0> : Nothing {};
+struct tlist_get<EmptyList, 0> : EmptyList {};
 
 template<class Type, class List>
 struct tlist_add {
@@ -226,13 +226,13 @@ struct tlist_add_unique {
 };
 
 template<class List>
-struct tlist_add_unique<Nothing, List> {
+struct tlist_add_unique<EmptyList, List> {
     using type = List;
 };
 
-static_assert(std::is_same_v<tlist_add_unique_t<Long<0>, Nothing>, TList<Long<0>, Nothing>>);
-static_assert(std::is_same_v<tlist_add_unique_t<Long<1>, TList<Long<0>, Nothing>>, TList<Long<1>, TList<Long<0>, Nothing>>>);
-static_assert(std::is_same_v<tlist_add_unique_t<Long<0>, TList<Long<0>, Nothing>>, TList<Long<0>, Nothing>>);
+static_assert(std::is_same_v<tlist_add_unique_t<Long<0>, EmptyList>, TList<Long<0>, EmptyList>>);
+static_assert(std::is_same_v<tlist_add_unique_t<Long<1>, TList<Long<0>, EmptyList>>, TList<Long<1>, TList<Long<0>, EmptyList>>>);
+static_assert(std::is_same_v<tlist_add_unique_t<Long<0>, TList<Long<0>, EmptyList>>, TList<Long<0>, EmptyList>>);
 
 template<bool TypeGoFirst, class Type, class List, template<typename, typename> typename SortCmp>
 struct tlist_sort_add_helper;
@@ -277,7 +277,7 @@ struct great_than {
     static constexpr bool value = A::value > B::value;
 };
 template<typename A>
-struct great_than<A, Nothing> {
+struct great_than<A, EmptyList> {
     static constexpr bool value = true;
 };
 
@@ -286,7 +286,7 @@ struct less_than {
     static constexpr bool value = A::value < B::value;
 };
 template<typename A>
-struct less_than<A, Nothing> {
+struct less_than<A, EmptyList> {
     static constexpr bool value = true;
 };
 
@@ -294,40 +294,40 @@ static_assert(
     std::is_same_v<
         tlist_sort_add_t<
             Long<0>,
-            Nothing,
+            EmptyList,
             great_than
         >,
-        TList<Long<0>, Nothing>
+        TList<Long<0>, EmptyList>
     >
 );
 static_assert(
     std::is_same_v<
         tlist_sort_add_t<
             Long<0>,
-            TList<Long<1>, Nothing>,
+            TList<Long<1>, EmptyList>,
             great_than
         >,
-        TList<Long<1>, TList<Long<0>, Nothing>>
+        TList<Long<1>, TList<Long<0>, EmptyList>>
     >
 );
 static_assert(
     std::is_same_v<
         tlist_sort_add_t<
             Long<0>,
-            TList<Long<2>, TList<Long<1>, Nothing>>,
+            TList<Long<2>, TList<Long<1>, EmptyList>>,
             great_than
         >,
-        TList<Long<2>, TList<Long<1>, TList<Long<0>, Nothing>>>
+        TList<Long<2>, TList<Long<1>, TList<Long<0>, EmptyList>>>
     >
 );
 static_assert(
     std::is_same_v<
         tlist_sort_add_t<
             Long<0>,
-            TList<Long<1>, TList<Long<2>, Nothing>>,
+            TList<Long<1>, TList<Long<2>, EmptyList>>,
             less_than
         >,
-        TList<Long<0>, TList<Long<1>, TList<Long<2>, Nothing>>>
+        TList<Long<0>, TList<Long<1>, TList<Long<2>, EmptyList>>>
     >
 );
 
@@ -338,20 +338,20 @@ template<class SortedList, class UnsortedList, template<typename, typename> type
 struct tlist_sort_by_helper : tlist_sort_by_helper<tlist_sort_add_t<tlist_head_t<UnsortedList>, SortedList, SortCmp>, tlist_tail_t<UnsortedList>, SortCmp> {};
 
 template<class SortedList, template<typename, typename> typename SortCmp>
-struct tlist_sort_by_helper<SortedList, Nothing, SortCmp> {
+struct tlist_sort_by_helper<SortedList, EmptyList, SortCmp> {
     using type = SortedList;
 };
 
 template<class List, template<typename, typename> typename SortCmp>
-struct tlist_sort_by : tlist_sort_by_helper<Nothing, List, SortCmp> {};
+struct tlist_sort_by : tlist_sort_by_helper<EmptyList, List, SortCmp> {};
 
 static_assert(
     std::is_same_v<
         tlist_sort_by_t<
-            TList<Long<2>, TList<Long<0>, TList<Long<3>, TList<Long<1>, Nothing>>>>, 
+            TList<Long<2>, TList<Long<0>, TList<Long<3>, TList<Long<1>, EmptyList>>>>, 
             less_than
         >,
-        TList<Long<0>, TList<Long<1>, TList<Long<2>, TList<Long<3>, Nothing>>>>
+        TList<Long<0>, TList<Long<1>, TList<Long<2>, TList<Long<3>, EmptyList>>>>
     >
 );
 
@@ -365,14 +365,14 @@ template<class List, template<class> typename If>
 struct tlist_remove_if_helper<true, List, If> : tlist_tail<List> {};
 
 template<bool IsSameThanHead, template<class> typename If>
-struct tlist_remove_if_helper<IsSameThanHead, Nothing, If> : Nothing {};
+struct tlist_remove_if_helper<IsSameThanHead, EmptyList, If> : EmptyList {};
 
 
 template<class List, template<class> typename If>
 struct tlist_remove_if : tlist_remove_if_helper<If<tlist_head_t<List>>::value, List, If> {};
 
 template<template<class>typename If>
-struct tlist_remove_if<Nothing, If> : Nothing {};
+struct tlist_remove_if<EmptyList, If> : EmptyList {};
 
 template<class T, class List>
 struct tlist_remove {
@@ -381,20 +381,20 @@ struct tlist_remove {
     using type = tlist_remove_if_t<List, If>;
 };
 
-static_assert(std::is_same_v<tlist_remove_t<Long<0>, Nothing>, Nothing>);
-static_assert(std::is_same_v<tlist_remove_t<Long<0>, TList<Long<0>, Nothing>>, Nothing>);
-static_assert(std::is_same_v<tlist_remove_t<Long<0>, TList<Long<0>, TList<Long<1>, Nothing>>>, TList<Long<1>, Nothing>>);
-static_assert(std::is_same_v<tlist_remove_t<Long<0>, TList<Long<1>, TList<Long<0>, Nothing>>>, TList<Long<1>, Nothing>>);
+static_assert(std::is_same_v<tlist_remove_t<Long<0>, EmptyList>, EmptyList>);
+static_assert(std::is_same_v<tlist_remove_t<Long<0>, TList<Long<0>, EmptyList>>, EmptyList>);
+static_assert(std::is_same_v<tlist_remove_t<Long<0>, TList<Long<0>, TList<Long<1>, EmptyList>>>, TList<Long<1>, EmptyList>>);
+static_assert(std::is_same_v<tlist_remove_t<Long<0>, TList<Long<1>, TList<Long<0>, EmptyList>>>, TList<Long<1>, EmptyList>>);
 
-static_assert(std::is_same_v<tlist_remove_t<Long<0>, TList<Long<2>, TList<Long<0>, TList<Long<1>, Nothing>>>>, TList<Long<2>, TList<Long<1>, Nothing>>>);
-static_assert(std::is_same_v<tlist_remove_t<Long<0>, TList<Long<1>, TList<Long<2>, Nothing>>>, TList<Long<1>, TList<Long<2>, Nothing>>>);
+static_assert(std::is_same_v<tlist_remove_t<Long<0>, TList<Long<2>, TList<Long<0>, TList<Long<1>, EmptyList>>>>, TList<Long<2>, TList<Long<1>, EmptyList>>>);
+static_assert(std::is_same_v<tlist_remove_t<Long<0>, TList<Long<1>, TList<Long<2>, EmptyList>>>, TList<Long<1>, TList<Long<2>, EmptyList>>>);
 
 static_assert(std::is_same_v<
     tlist_remove_t<
         Long<4>,
-        TList<Long<0>, TList<Long<1>, TList<Long<2>, TList<Long<3>, TList<Long<4>, Nothing>>>>>
+        TList<Long<0>, TList<Long<1>, TList<Long<2>, TList<Long<3>, TList<Long<4>, EmptyList>>>>>
     >,
-    TList<Long<0>, TList<Long<1>, TList<Long<2>, TList<Long<3>, Nothing>>>>
+    TList<Long<0>, TList<Long<1>, TList<Long<2>, TList<Long<3>, EmptyList>>>>
 >);
 
 template<bool ShouldBeRemove, class List, template<class> typename If>
@@ -404,7 +404,7 @@ template<class List, template<class> typename If>
 struct tlist_remove_all_if_helper<true, List, If> : tlist_remove_all_if_helper<If<tlist_get_t<List, 1>>::value, tlist_tail_t<List>, If> {};
 
 template<bool ShouldBeRemove, template<class>typename If>
-struct tlist_remove_all_if_helper<ShouldBeRemove, Nothing, If> : Nothing {};
+struct tlist_remove_all_if_helper<ShouldBeRemove, EmptyList, If> : EmptyList {};
 
 template<class List, template<class> typename If>
 struct tlist_remove_all_if : tlist_remove_all_if_helper<If<tlist_head_t<List>>::value, List, If> {};
@@ -413,25 +413,25 @@ template<class List1, class List2>
 struct tlist_concat : tlist_add<tlist_head_t<List1>, typename tlist_concat<tlist_tail_t<List1>, List2>::type> {};
 
 template<class List2>
-struct tlist_concat<Nothing, List2> {
+struct tlist_concat<EmptyList, List2> {
     using type = List2;
 };
 
-static_assert(std::is_same_v<tlist_concat_t<TList<Long<0>, Nothing>, TList<Long<1>, Nothing>>, TList<Long<0>, TList<Long<1>, Nothing>>>);
+static_assert(std::is_same_v<tlist_concat_t<TList<Long<0>, EmptyList>, TList<Long<1>, EmptyList>>, TList<Long<0>, TList<Long<1>, EmptyList>>>);
 static_assert(std::is_same_v<
     tlist_concat_t<
         TList<
             Long<0>,
             TList<
                 Long<1>,
-                Nothing
+                EmptyList
             >
         >,
         TList<
             Long<2>,
             TList<
                 Long<3>,
-                Nothing
+                EmptyList
             >
         >
     >,
@@ -443,7 +443,7 @@ static_assert(std::is_same_v<
                 Long<2>,
                 TList<
                     Long<3>,
-                    Nothing
+                    EmptyList
                 >
             >
         >
@@ -454,6 +454,6 @@ template<template<class>typename Func, class List>
 struct tlist_map : tlist_add<typename Func<tlist_head_t<List>>::type, typename tlist_map<Func, tlist_tail_t<List>>::type> {};
 
 template<template<class>typename Func>
-struct tlist_map<Func, Nothing> : Nothing {};
+struct tlist_map<Func, EmptyList> : EmptyList {};
 #endif
 
