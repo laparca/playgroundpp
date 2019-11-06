@@ -1,5 +1,5 @@
-#ifndef __LONG_H__
-#define __LONG_H__
+#ifndef LONG_H
+#define LONG_H
 
 #include <cstdint>
 #include <type_traits>

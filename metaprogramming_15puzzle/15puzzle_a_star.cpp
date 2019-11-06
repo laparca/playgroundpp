@@ -241,14 +241,14 @@ constexpr char direction[4] = {
 };
 
 template<class Path>
-struct __show_path : __show_path<typename Path::next> {
-    __show_path() {
+struct show_path : show_path<typename Path::next> {
+    show_path() {
         std::cout << direction[Path::type::direction];
     }
 };
 
 template<>
-struct __show_path<Nothing> {};
+struct show_path<Nothing> {};
 
 int main() {
     //using to_solve = Long<0x1230'5674'9ab8'defc>;
@@ -260,7 +260,7 @@ int main() {
         std::cout << "" << "hasn't got result" << std::endl;
     }
     else {
-        __show_path<resolv_t<to_solve>>{};
+        show_path<resolv_t<to_solve>>{};
         std::cout << std::endl;
     }
 

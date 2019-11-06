@@ -1,5 +1,5 @@
-#ifndef __PUZZLE_H__
-#define __PUZZLE_H__
+#ifndef PUZZLE_H
+#define PUZZLE_H
 
 #include <cstdint>
 #include <type_traits>

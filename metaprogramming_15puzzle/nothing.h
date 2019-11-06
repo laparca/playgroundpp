@@ -1,5 +1,5 @@
-#ifndef __NOTHING_H__
-#define __NOTHING_H__
+#ifndef NOTHING_H
+#define NOTHING_H
 
 struct Nothing {
     using type = Nothing;
