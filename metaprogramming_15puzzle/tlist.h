@@ -1,5 +1,5 @@
-#ifndef __TLIST_H__
-#define __TLIST_H__
+#ifndef TLIST_H
+#define TLIST_H
 
 #include <type_traits>
 #include "nothing.h"
@@ -11,6 +11,152 @@ struct TList {
     using next = Next;
 };
 
+using EmptyList = Nothing;
+
+/**
+ * Checks if the type \a Type is in list \a List.
+ */
+template<class Type, class List>
+struct tlist_has_element;
+
+template<class Type, class List>
+inline constexpr bool tlist_has_element_v = tlist_has_element<Type, List>::value;
+
+/**
+ * Returns the number of elements of the list \a List.
+ */
+template<class List>
+struct tlist_size;
+
+template<class List>
+inline constexpr uint64_t tlist_size_v = tlist_size<List>::value;
+
+/**
+ * Returns the first element of the list \a List.
+ */
+template<class List>
+struct tlist_head;
+
+template<class List>
+using tlist_head_t = typename tlist_head<List>::type;
+
+/**
+ * Returns the tail of the list \a List. The tail is the list
+ * without the first element (the head).
+ */
+template<class List>
+struct tlist_tail;
+
+template<class List>
+using tlist_tail_t = typename tlist_tail<List>::type;
+
+/**
+ * Returns the element of the list \a List at position \a P.
+ */
+template<class List, int P>
+struct tlist_get;
+
+template<class List, int P>
+using tlist_get_t = typename tlist_get<List, P>::type;
+
+/**
+ * Adds the type \a Type at the top of the list \a List.
+ */
+template<class Type, class List>
+struct tlist_add;
+
+template<class Type, class List>
+using tlist_add_t = typename tlist_add<Type, List>::type;
+
+/**
+ * Adds the type \a Type to the list \a List if it isn't in the list.
+ */
+template<class Type, class List>
+struct tlist_add_unique;
+
+template<class Type, class List>
+using tlist_add_unique_t = typename tlist_add_unique<Type, List>::type;
+
+/**
+ * Add the type \a Type in the list \a List sorting it by \a SortCmp.
+ * The position of \a Type is when \a SortCmp returns true. \a SortCmp checks
+ * if \a Type go before the checked elemento of the list.
+ */
+template<typename Type, class List, template<typename, typename> typename SortCmp>
+struct tlist_sort_add;
+
+template<typename Type, class List, template<typename, typename> typename SortCmp>
+using tlist_sort_add_t = typename tlist_sort_add<Type, List, SortCmp>::type;
+
+/**
+ * Like \a tlist_sort_add, but \a Type couldn't be duplicated.
+ */
+template<class Type, class List, template<typename, typename> typename SortCmp>
+struct tlist_sort_add_unique;
+
+template<typename Type, class List, template<typename, typename> typename SortCmp>
+using tlist_sort_add_unique_t = typename tlist_sort_add_unique<Type, List, SortCmp>::type;
+
+/**
+ * Sorts the list \a List using \a SortCmp.
+ */
+template<class List, template<typename, typename> typename SortCmp>
+struct tlist_sort_by;
+
+template<class List, template<typename, typename> typename SortCmp>
+using tlist_sort_by_t = typename tlist_sort_by<List, SortCmp>::type;
+
+/**
+ * Removes the first element of the list \a List that satisfies \a If.
+ */
+template<class List, template<class> typename If>
+struct tlist_remove_if;
+
+template<class List, template<class> typename If>
+using tlist_remove_if_t = typename tlist_remove_if<List, If>::type;
+
+/**
+ * Removes first element of the type \a T of the list \a List.
+ */
+template<class T, class List>
+struct tlist_remove;
+
+template<class T, class List>
+using tlist_remove_t = typename tlist_remove<T, List>::type;
+
+/**
+ * Removes all the elements of the list \a List that satisfy \a If.
+ */
+template<class List, template<class> typename If>
+struct tlist_remove_all_if;
+
+template<class List, template<class> typename If>
+using tlist_remove_all_if_t = typename tlist_remove_all_if<List, If>::type;
+
+/**
+ * Concatenates the list \a List1 and the list \a List2.
+ */
+template<class List1, class List2>
+struct tlist_concat;
+
+template<class List1, class List2>
+using tlist_concat_t = typename tlist_concat<List1, List2>::type;
+
+/**
+ * Returns a new list where each element is the element is the result
+ * of run \a Func in the corresponding element of \a List.
+ */
+template<template<class>typename Func, class List>
+struct tlist_map;
+
+template<template<class>typename Func, class List>
+using tlist_map_t = typename tlist_map<Func, List>::type;
+
+
+
+/* IMPLEMENTATION SECTION */
+
+
 template<class Type, class List>
 struct tlist_has_element : std::conditional_t<
         std::is_same_v<Type, typename List::type>,
@@ -20,9 +166,6 @@ struct tlist_has_element : std::conditional_t<
 
 template<class Type>
 struct tlist_has_element<Type, Nothing> : std::false_type {};
-
-template<class Type, class List>
-inline constexpr bool tlist_has_element_v = tlist_has_element<Type, List>::value;
 
 static_assert(tlist_has_element_v<Long<0>, Nothing> == false);
 static_assert(tlist_has_element_v<Long<0>, TList<Long<0>, Nothing>> == true);
@@ -42,9 +185,6 @@ struct tlist_size<Nothing> {
     static constexpr uint64_t value = 0;
 };
 
-template<class List>
-inline constexpr uint64_t tlist_size_v = tlist_size<List>::value;
-
 static_assert(tlist_size_v<Nothing> == 0);
 static_assert(tlist_size_v<TList<Long<0>, Nothing>> == 1);
 static_assert(tlist_size_v<TList<Long<1>, TList<Long<0>, Nothing>>> == 2);
@@ -55,15 +195,9 @@ struct tlist_head {
 };
 
 template<class List>
-using tlist_head_t = typename tlist_head<List>::type;
-
-template<class List>
 struct tlist_tail {
     using type = typename List::next;
 };
-
-template<class List>
-using tlist_tail_t = typename tlist_tail<List>::type;
 
 template<class List, int P>
 struct tlist_get : tlist_get<tlist_tail_t<List>, P-1> {};
@@ -77,16 +211,10 @@ struct tlist_get<Nothing, P> : Nothing {};
 template<>
 struct tlist_get<Nothing, 0> : Nothing {};
 
-template<class List, int P>
-using tlist_get_t = typename tlist_get<List, P>::type;
-
 template<class Type, class List>
 struct tlist_add {
     using type = TList<Type, List>;
 };
-
-template<class Type, class List>
-using tlist_add_t = typename tlist_add<Type, List>::type;
 
 template<class Type, class List>
 struct tlist_add_unique {
@@ -102,19 +230,9 @@ struct tlist_add_unique<Nothing, List> {
     using type = List;
 };
 
-template<class Type, class List>
-using tlist_add_unique_t = typename tlist_add_unique<Type, List>::type;
-
 static_assert(std::is_same_v<tlist_add_unique_t<Long<0>, Nothing>, TList<Long<0>, Nothing>>);
 static_assert(std::is_same_v<tlist_add_unique_t<Long<1>, TList<Long<0>, Nothing>>, TList<Long<1>, TList<Long<0>, Nothing>>>);
 static_assert(std::is_same_v<tlist_add_unique_t<Long<0>, TList<Long<0>, Nothing>>, TList<Long<0>, Nothing>>);
-
-template<typename Type, class List, template<typename, typename> typename SortCmp>
-struct tlist_sort_add;
-
-template<typename Type, class List, template<typename, typename> typename SortCmp>
-using tlist_sort_add_t = typename tlist_sort_add<Type, List, SortCmp>::type;
-
 
 template<bool TypeGoFirst, class Type, class List, template<typename, typename> typename SortCmp>
 struct tlist_sort_add_helper;
@@ -143,20 +261,16 @@ template<typename Type, class List, template<typename, typename> typename SortCm
 struct tlist_sort_add : tlist_sort_add_helper<SortCmp<Type, tlist_head_t<List>>::value, Type, List, SortCmp> {};
 
 template<bool IsRepeated, class Type, class List, template<typename, typename> typename SortCmp>
-struct tlist_sort_add_unique : tlist_sort_add<Type, List, SortCmp> {};
+struct tlist_sort_add_unique_helper : tlist_sort_add<Type, List, SortCmp> {};
 
 template<class Type, class List, template<typename, typename> typename SortCmp>
-struct tlist_sort_add_unique<true, Type, List, SortCmp> {
+struct tlist_sort_add_unique_helper<true, Type, List, SortCmp> {
    using type = List;
 };
 
-template<typename Type, class List, template<typename, typename> typename SortCmp>
-using tlist_sort_add_unique_t = typename tlist_sort_add_unique<
-    tlist_has_element_v<Type, List>,
-    Type,
-    List,
-    SortCmp
->::type;
+template<class Type, class List, template<class, class> typename SortCmp>
+struct tlist_sort_add_unique : tlist_sort_add_unique_helper<tlist_has_element_v<Type, List>, Type, List, SortCmp> {};
+
 
 template<typename A, typename B>
 struct great_than {
@@ -220,12 +334,6 @@ static_assert(
 /**
  * Implements bubble sort. Yes, it's aweful, but easy
  */
-template<class List, template<typename, typename> typename SortCmp>
-struct tlist_sort_by;
-
-template<class List, template<typename, typename> typename SortCmp>
-using tlist_sort_by_t = typename tlist_sort_by<List, SortCmp>::type;
-
 template<class SortedList, class UnsortedList, template<typename, typename> typename SortCmp>
 struct tlist_sort_by_helper : tlist_sort_by_helper<tlist_sort_add_t<tlist_head_t<UnsortedList>, SortedList, SortCmp>, tlist_tail_t<UnsortedList>, SortCmp> {};
 
@@ -246,12 +354,6 @@ static_assert(
         TList<Long<0>, TList<Long<1>, TList<Long<2>, TList<Long<3>, Nothing>>>>
     >
 );
-
-template<class List, template<class> typename If>
-struct tlist_remove_if;
-
-template<class List, template<class> typename If>
-using tlist_remove_if_t = typename tlist_remove_if<List, If>::type;
 
 template<bool IsSameThanHead, class List, template<typename> typename If>
 struct tlist_remove_if_helper : tlist_add<
@@ -278,9 +380,6 @@ struct tlist_remove {
     using If = std::is_same<T, Other>;
     using type = tlist_remove_if_t<List, If>;
 };
-
-template<class T, class List>
-using tlist_remove_t = typename tlist_remove<T, List>::type;
 
 static_assert(std::is_same_v<tlist_remove_t<Long<0>, Nothing>, Nothing>);
 static_assert(std::is_same_v<tlist_remove_t<Long<0>, TList<Long<0>, Nothing>>, Nothing>);
@@ -317,9 +416,6 @@ template<class List2>
 struct tlist_concat<Nothing, List2> {
     using type = List2;
 };
-
-template<class List1, class List2>
-using tlist_concat_t = typename tlist_concat<List1, List2>::type;
 
 static_assert(std::is_same_v<tlist_concat_t<TList<Long<0>, Nothing>, TList<Long<1>, Nothing>>, TList<Long<0>, TList<Long<1>, Nothing>>>);
 static_assert(std::is_same_v<
