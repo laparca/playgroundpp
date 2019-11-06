@@ -216,6 +216,11 @@ struct tlist_add {
     using type = TList<Type, List>;
 };
 
+template<class List>
+struct tlist_add<Nothing, List> {
+    using type = List;
+};
+
 template<class Type, class List>
 struct tlist_add_unique {
     using type = std::conditional_t<
@@ -271,6 +276,10 @@ struct tlist_sort_add_unique_helper<true, Type, List, SortCmp> {
 template<class Type, class List, template<class, class> typename SortCmp>
 struct tlist_sort_add_unique : tlist_sort_add_unique_helper<tlist_has_element_v<Type, List>, Type, List, SortCmp> {};
 
+template<class List, template<class, class> typename SortCmp>
+struct tlist_sort_add_unique<Nothing, List, SortCmp> {
+    using type = List;
+};
 
 template<typename A, typename B>
 struct great_than {
