@@ -127,21 +127,38 @@ using __move_t = typename __move<Condition, Pos, M, Puz>::type;
 static_assert(std::is_same_v<__move_t<false, 0, Up, 0>, Nothing>);
 
 template<Movement M, class MaybePuzzle>
-struct move {
-    using type = 
-    std::conditional_t<M == Up,    __move_t<get_hole_position_t<MaybePuzzle>::value / 4 != 3, get_hole_position_t<MaybePuzzle>::value, Up   , MaybePuzzle::value>,
-    std::conditional_t<M == Right, __move_t<get_hole_position_t<MaybePuzzle>::value % 4 != 0, get_hole_position_t<MaybePuzzle>::value, Right, MaybePuzzle::value>,
-    std::conditional_t<M == Down,  __move_t<get_hole_position_t<MaybePuzzle>::value / 4 != 0, get_hole_position_t<MaybePuzzle>::value, Down , MaybePuzzle::value>,
-                     /*M == Left*/ __move_t<get_hole_position_t<MaybePuzzle>::value % 4 != 3, get_hole_position_t<MaybePuzzle>::value, Left , MaybePuzzle::value>
-    > > >;
-    static constexpr Movement direction = M;
+struct move;
+
+template<class MaybePuzzle>
+struct move<Up, MaybePuzzle> {
+    using type = __move_t<get_hole_position_t<MaybePuzzle>::value / 4 != 3, get_hole_position_t<MaybePuzzle>::value, Up   , MaybePuzzle::value>;
+    static constexpr Movement direction = Up;
+};
+template<class MaybePuzzle>
+struct move<Right, MaybePuzzle> {
+    using type = __move_t<get_hole_position_t<MaybePuzzle>::value % 4 != 0, get_hole_position_t<MaybePuzzle>::value, Right, MaybePuzzle::value>;
+    static constexpr Movement direction = Right;
+};
+template<class MaybePuzzle>
+struct move<Down, MaybePuzzle> {
+    using type = __move_t<get_hole_position_t<MaybePuzzle>::value / 4 != 0, get_hole_position_t<MaybePuzzle>::value, Down , MaybePuzzle::value>;
+    static constexpr Movement direction = Down;
+};
+template<class MaybePuzzle>
+struct move<Left, MaybePuzzle> {
+    using type = __move_t<get_hole_position_t<MaybePuzzle>::value % 4 != 3, get_hole_position_t<MaybePuzzle>::value, Left , MaybePuzzle::value>;
+    static constexpr Movement direction = Left;
 };
 
 /* Try to move nothing results nothing */
-template<Movement M>
-struct move<M, Nothing> {
-    using type = Nothing;
-};
+template<>
+struct move<Up   , Nothing> { using type = Nothing; };
+template<>
+struct move<Right, Nothing> { using type = Nothing; };
+template<>
+struct move<Down , Nothing> { using type = Nothing; };
+template<>
+struct move<Left , Nothing> { using type = Nothing; };
 
 template<Movement M, class MaybePuzzle>
 using move_t = typename move<M, MaybePuzzle>::type;

@@ -49,12 +49,12 @@ constexpr uint64_t dest_coord_y(const uint64_t coord_value) {
 
 template<uint64_t Puz, uint64_t Pos>
 constexpr uint64_t ManhattanDistance_helper = 
-        /* Number of horizontal movements for the current piece to go to its position */
-        abs_sub(dest_coord_x(coord_value(Puz)), coord_x_from_pos(Pos)) +
-        /* Number of vertical movements for the current piece to go to its position */
-        abs_sub(dest_coord_y(coord_value(Puz)), coord_y_from_pos(Pos)) +
-        /* The sum of the Manhattan Dstance of the rest of pieces */
-        ManhattanDistance_helper<(Puz >> 4), Pos + 1>;
+    /* Number of horizontal movements for the current piece to go to its position */
+    abs_sub(dest_coord_x(coord_value(Puz)), coord_x_from_pos(Pos)) +
+    /* Number of vertical movements for the current piece to go to its position */
+    abs_sub(dest_coord_y(coord_value(Puz)), coord_y_from_pos(Pos)) +
+    /* The sum of the Manhattan Dstance of the rest of pieces */
+    ManhattanDistance_helper<(Puz >> 4), Pos + 1>;
 
 template<uint64_t Puz>
 constexpr uint64_t ManhattanDistance_helper<Puz, 16> = 0;
@@ -68,167 +68,115 @@ static_assert(ManhattanDistance<0x1234'5678'9ab0'defc> == 2);
 static_assert(ManhattanDistance<0x1234'5670'9ab8'defc> == 4);
 static_assert(ManhattanDistance<0x1234'5607'9ab8'defc> == 6);
 
+/** At this moment, the function move from puzzle accepts a value and a type. Thats
+ * a problem for tlist_map because it forces that the function should accept
+ * types. Because of this we create this Mov type that stores a Movement.
+ * The function \a func can extract the value and call move with it.
+ */
+template<Movement M>
+using Mov = std::integral_constant<Movement, M>;
+
+template<class Puz, uint64_t Distance, uint64_t Moves, class Previous, class Movement>
+struct GameState {
+    using puz = Puz;
+    static constexpr uint64_t distance = Distance;
+    static constexpr uint64_t moves = Moves;
+    using previous = Previous;
+    using mov = Movement;
+};
+
+/**
+ * Describes how to create the initial GameState.
+ */
+template<class Puz>
+using initial_GameState = tlist_add_t<GameState<Puz, ManhattanDistance<Puz::value>, 0, Nothing, Nothing>, EmptyList>;
+
+/**
+ * Describes the processing list. It is a ordered list with the GameStates to process.
+ * The first element should be the GameState nearest to the solution (or the solution).
+ *
+ * The processin list is created with one element, the initial GameState.
+ */
+template<class Puz>
+using ProcList = tlist_add_t<initial_GameState<Puz>, EmptyList>;
+
+#define LIST0()           EmptyList
+#define LIST1(a)          tlist_add_t<a, LIST0()>
+#define LIST2(a, b)       tlist_add_t<a, LIST1(b)>
+#define LIST3(a, b, c)    tlist_add_t<a, LIST2(b, c)>
+#define LIST4(a, b, c, d) tlist_add_t<a, LIST3(b, c, d)>
+
+template<bool B, class move, class GS, class M> struct func_helper {
+    using type = GameState<move, ManhattanDistance<move::value>, GS::moves + 1, GS, M>;
+};
+template<class move, class GS, class M> struct func_helper<true, move, GS, M> : Nothing {};
+
+template<class GS>
+struct generate_moves {
+    template<class  M>
+    struct func { 
+        using move = move_t<M::value, typename GS::puz>;
+
+        using type = typename func_helper<is_nothing_v<move>, move, GS, M>::type;
+    };
+
+    using type = tlist_map_t<func, LIST4(Mov<Up>, Mov<Right>, Mov<Down>, Mov<Left>)>;
+};
+
+template<class Puz>
+using generate_moves_t = typename generate_moves<Puz>::type;
+
+template<class State1, class State2>
+struct GameStateSortFunc {
+    static constexpr bool value = (State1::distance + State1::moves) < (State2::distance + State2::moves);
+};
+
+template<class State1>
+struct GameStateSortFunc<State1, Nothing> {
+    static constexpr bool value = true;
+};
+
 /* The heuristic function we will use is the Mnahattan distance of the movement
  * and the length of all the moves we did */
 template<class Puz, class Moves>
 constexpr uint64_t Heuristic = ManhattanDistance<Puz::value> + tlist_size_v<Moves>;
 
-/**
- * Helper to solve a puzzle. It receive the actual puzzle
- * to solve, the movements done to get to this puzzle and
- * all the visited positions.
- *
- * All the __resolv types should have:
- *    * type: a type indicating it is a dead end path. In this case, type is Nothing.
- *    * moves: the list of moves used to get to the actual puzzle.
- *    * visited: all the puzzles visited during the resolution.
- */
-template<class MaybePuzzle, class MoveList, class Visited>
-struct __resolv;
 
-template<class MaybePuzzle, class MoveList, class Visited>
-using __resolv_t = typename __resolv<MaybePuzzle, MoveList, Visited>::type;
+template<class ProcList>
+struct resolv;
 
-template<class MaybePuzzle, class MoveList, class Visited>
-using __resolv_visited = typename __resolv<MaybePuzzle, MoveList, Visited>::visited;
+template<class ProcList>
+using resolv_t = typename resolv<ProcList>::type;
 
-template<bool Choose, Movement M, class MaybePuzzle, class MoveList, class Visited, class Result, template<class, class, class> class Action>
-struct __resolv_move_helper_selector {
-    using type = Action<
-            move_t<M, MaybePuzzle>,
-            tlist_add_unique_t<
-                move<M, MaybePuzzle>,
-                MoveList
-            >,
-            tlist_add_unique_t<
-                move_t<M, MaybePuzzle>,
-                Visited
-            >
-        >;
+template<bool IsComplete, class ProcList>
+struct resolv_helper;
+template<bool IsComplete, class ProcList>
+using resolv_helper_t = resolv_helper<IsComplete, ProcList>;
+
+template<class ProcList>
+struct resolv_helper<true, ProcList> {
+    using type = tlist_head_t<ProcList>;
 };
 
-template<Movement M, class MaybePuzzle, class MoveList, class Visited, class Result, template<class, class, class> class Action>
-struct __resolv_move_helper_selector<true, M, MaybePuzzle, MoveList, Visited, Result, Action> {
-    using type = Result;
-};
-template<bool Choose, Movement M, class MaybePuzzle, class MoveList, class Visited, class Result, template<class, class, class> class Action>
-using __resolv_move_helper_selector_t = typename __resolv_move_helper_selector<Choose, M, MaybePuzzle, MoveList, Visited, Result, Action>::type;
+template<class ProcList>
+struct resolv_helper<false, ProcList> {
+    using actGS = tlist_head_t<ProcList>;
 
-template<Movement M, class MaybePuzzle, class MoveList, class Visited, class Result, template<class, class, class> class Action>
-using __resolv_move_helper = __resolv_move_helper_selector_t<
-        std::is_same_v<move_t<M, MaybePuzzle>, Nothing> || tlist_has_element_v<move_t<M, MaybePuzzle>, Visited>,
-        M, MaybePuzzle, MoveList, Visited, Result, Action
+    template<class List, class GS>
+    using gs_add = tlist_sort_add_unique<GS, List, GameStateSortFunc>;
+
+    using type = resolv_t<
+        tlist_foldl_t<
+            gs_add,
+            tlist_tail_t<ProcList>,
+            generate_moves_t<actGS>
+        >
     >;
-
-template<Movement M, class MaybePuzzle, class MoveList, class Visited>
-struct __resolv_move {
-    using type    = __resolv_move_helper<M, MaybePuzzle, MoveList, Visited, Nothing , __resolv_t      >;
-    using visited = __resolv_move_helper<M, MaybePuzzle, MoveList, Visited, Visited , __resolv_visited>;
-};
-template<Movement M, class MoveList, class Visited>
-struct __resolv_move<M, Nothing, MoveList, Visited> {
-    using type    = Nothing;
-    using visited = Visited;
 };
 
-template<Movement M, class MaybePuzzle, class MoveList, class Visited>
-using __resolv_move_t = typename __resolv_move<M, MaybePuzzle, MoveList, Visited>::type;
+template<class ProcList>
+struct resolv : resolv_helper<std::is_same_v<typename tlist_head_t<ProcList>::puz, PuzzleResolved>, ProcList> {};
 
-template<Movement M, class MaybePuzzle, class MoveList, class Visited>
-using __resolv_move_visited = typename __resolv_move<M, MaybePuzzle, MoveList, Visited>::visited;
-
-template<bool Solved, class MaybePuzzle, class MoveList, class Visited>
-struct __resolv_left {
-    using type = __resolv_move<Left, MaybePuzzle, MoveList, Visited>;
-};
-template<class MaybePuzzle, class MoveList, class Visited>
-struct __resolv_left<true, MaybePuzzle, MoveList, Visited> {
-    using type = Nothing;
-};
-
-template<bool Solved, class MaybePuzzle, class MoveList, class Visited>
-struct __resolv_down {
-    using type = __resolv_move<Down, MaybePuzzle, MoveList, Visited>;
-};
-template<class MaybePuzzle, class MoveList, class Visited>
-struct __resolv_down<true, MaybePuzzle, MoveList, Visited> {
-    using type = typename __resolv_left<
-        std::is_same_v<move_t<Left, MaybePuzzle>, Nothing> || tlist_has_element_v<move_t<Left, MaybePuzzle>, Visited>,
-        MaybePuzzle,
-        MoveList,
-        __resolv_move_visited<Down, MaybePuzzle, MoveList, Visited>
-    >::type;
-};
-
-template<bool Solved, class MaybePuzzle, class MoveList, class Visited>
-struct __resolv_right {
-    using type = __resolv_move<Right, MaybePuzzle, MoveList, Visited>;
-};
-template<class MaybePuzzle, class MoveList, class Visited>
-struct __resolv_right<true, MaybePuzzle, MoveList, Visited> {
-    using type = typename __resolv_down<
-        std::is_same_v<move_t<Down, MaybePuzzle>, Nothing> || tlist_has_element_v<move_t<Down, MaybePuzzle>, Visited>,
-        MaybePuzzle,
-        MoveList,
-        __resolv_move_visited<Right, MaybePuzzle, MoveList, Visited>
-    >::type;
-};
-
-template<bool Unsolved, class MaybePuzzle, class MoveList, class Visited>
-struct __resolv_up {
-    using type = __resolv_move<Up, MaybePuzzle, MoveList, Visited>;
-};
-
-template<class MaybePuzzle, class MoveList, class Visited>
-struct __resolv_up<true, MaybePuzzle, MoveList, Visited> {
-    using type = typename __resolv_right<
-        std::is_same_v<move_t<Right, MaybePuzzle>, Nothing> || tlist_has_element_v<move_t<Right, MaybePuzzle>, Visited>,
-        MaybePuzzle,
-        MoveList,
-        __resolv_move_visited<Up, MaybePuzzle, MoveList, Visited>
-    >::type;
-};
-
-template<class MaybePuzzle, class MoveList, class Visited>
-struct __resolv {
-    using type_temp = typename __resolv_up<
-        std::is_same_v<move_t<Up, MaybePuzzle>, Nothing> || tlist_has_element_v<move_t<Up, MaybePuzzle>, Visited>,
-        MaybePuzzle,
-        MoveList,
-        Visited
-    >::type;
-
-    using type = typename type_temp::type;
-    using visited = typename type_temp::visited;
-};
-
-
-template<class MoveList, class Visited>
-struct __resolv<Nothing, MoveList, Visited> {
-    using type = Nothing;
-    using visited = Visited;
-};
-
-template<class MoveList, class Visited>
-struct __resolv<Long<0x1234'5678'9abc'def0>, MoveList, Visited> {
-    using type = MoveList;
-    using visited = Visited;
-};
-
-/* https://stackoverflow.com/questions/40781817/heuristic-function-for-solving-weighted-15-puzzle */
-template<class MaybePuzzle>
-struct resolv : __resolv<MaybePuzzle, Nothing, tlist_add_unique_t<MaybePuzzle, Nothing>> {};
-
-template<>
-struct resolv<Nothing> {
-    using type = Nothing;
-};
-
-template<class MaybePuzzle>
-using resolv_t = typename resolv<MaybePuzzle>::type;
-
-template<class MaybePuzzle>
-using resolv_moves = typename resolv<MaybePuzzle>::moves;
 
 #include <iostream>
 
@@ -241,9 +189,11 @@ constexpr char direction[4] = {
 };
 
 template<class Path>
-struct show_path : show_path<typename Path::next> {
+struct show_path : show_path<typename Path::previous> {
     show_path() {
-        std::cout << direction[Path::type::direction];
+        using move = typename Path::mov;
+        if constexpr (!is_nothing_v<move>)
+           std::cout << direction[move::value];
     }
 };
 
@@ -252,17 +202,12 @@ struct show_path<Nothing> {};
 
 int main() {
     //using to_solve = Long<0x1230'5674'9ab8'defc>;
-    using to_solve = Long<0x5123'9674'dab8'0efc>;
-    //using to_solve = Long<0x01234'5678'9abc'def>;
+    //using to_solve = Long<0x5123'9674'dab8'0efc>;
+    using to_solve = Long<0x01234'5678'9abc'def>;
     //using to_solve = Long<0x1234'5678'9abc'def0>;
-
-    if constexpr (std::is_same_v<resolv_t<to_solve>, Nothing>) {
-        std::cout << "" << "hasn't got result" << std::endl;
-    }
-    else {
-        show_path<resolv_t<to_solve>>{};
-        std::cout << std::endl;
-    }
-
+    
+    using solution = resolv_t<initial_GameState<to_solve>>;
+    show_path<solution>{};
+    
     return 0;
 }

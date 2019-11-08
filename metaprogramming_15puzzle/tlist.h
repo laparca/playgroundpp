@@ -152,7 +152,27 @@ struct tlist_map;
 template<template<class>typename Func, class List>
 using tlist_map_t = typename tlist_map<Func, List>::type;
 
+/**
+ * Fold operation. It calls Func<Initial, head> recursively and returst the
+ * last Initial calculated.
+ */
+template<template<class, class> class Func, class Initial, class List>
+struct tlist_foldl;
 
+template<template<class, class> class Func, class Initial, class List>
+using tlist_foldl_t = typename tlist_foldl<Func, Initial, List>::type;
+
+template<template<class, class> class Func, class List, class Initial>
+struct tlist_foldr;
+
+template<template<class, class> class Func, class List, class Initial>
+using tlist_foldr_t = typename tlist_foldr<Func, List, Initial>::type;
+
+template<typename List>
+struct tlist_reverse;
+
+template<typename List>
+using tlist_reverse_t = typename tlist_reverse<List>::type;
 
 /* IMPLEMENTATION SECTION */
 
@@ -407,7 +427,13 @@ static_assert(std::is_same_v<
 >);
 
 template<bool ShouldBeRemove, class List, template<class> typename If>
-struct tlist_remove_all_if_helper : tlist_add<tlist_head_t<List>, typename tlist_remove_all_if_helper<If<tlist_get_t<List, 1>>::value, tlist_tail_t<List>, If>::type> {};
+struct tlist_remove_all_if_helper;
+
+template<bool ShouldBeRemove, class List, template<class> typename If>
+using tlist_remove_all_if_helper_t = tlist_remove_all_if_helper<ShouldBeRemove, List, If>;
+
+template<bool ShouldBeRemove, class List, template<class> typename If>
+struct tlist_remove_all_if_helper : tlist_add<tlist_head_t<List>, tlist_remove_all_if_helper_t<If<tlist_get_t<List, 1>>::value, tlist_tail_t<List>, If>> {};
 
 template<class List, template<class> typename If>
 struct tlist_remove_all_if_helper<true, List, If> : tlist_remove_all_if_helper<If<tlist_get_t<List, 1>>::value, tlist_tail_t<List>, If> {};
@@ -464,5 +490,49 @@ struct tlist_map : tlist_add<typename Func<tlist_head_t<List>>::type, typename t
 
 template<template<class>typename Func>
 struct tlist_map<Func, EmptyList> : EmptyList {};
+
+template<class L>
+using pow2 = Long<L::value*L::value>;
+
+static_assert(std::is_same_v<
+    tlist_map_t<pow2, TList<Long<2>, EmptyList>>,
+    TList<Long<4>, EmptyList>
+>);
+
+static_assert(std::is_same_v<
+    tlist_map_t<pow2, TList<Long<3>, TList<Long<2>, EmptyList>>>,
+    TList<Long<9>, TList<Long<4>, EmptyList>>
+>);
+
+template<template<class, class> class Func, class Initial, class List>
+struct tlist_foldl : tlist_foldl<Func, typename Func<Initial, tlist_head_t<List>>::type, tlist_tail_t<List>> {};
+
+template<template<class, class> class Func, class Initial>
+struct tlist_foldl<Func, Initial, EmptyList> {
+    using type = Initial;
+};
+
+template<template<class, class>class Func, class List, class Initial>
+struct tlist_foldr : Func<tlist_head_t<List>, tlist_foldr_t<Func, tlist_tail_t<List>, Initial>> {};
+
+template<template<class, class>class Func, class Initial>
+struct tlist_foldr<Func, EmptyList, Initial> {
+    using type = Initial;
+};
+
+template<template<class, class> class Func>
+struct flip {
+    template<class A, class B>
+    using type = Func<B, A>;
+};
+
+template<class List>
+struct tlist_reverse : tlist_foldl<flip<tlist_add>::type, EmptyList, List> {};
+
+static_assert(std::is_same_v<
+    tlist_reverse_t<TList<Long<0>, TList<Long<1>, TList<Long<2>, EmptyList>>>>,
+    TList<Long<2>, TList<Long<1>, TList<Long<0>, EmptyList>>>
+>);
+
 #endif
 
