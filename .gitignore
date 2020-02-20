@@ -30,3 +30,15 @@
 *.exe
 *.out
 *.app
+
+# CMake temporal files
+cmake_install.cmake
+CMakeCache.txt
+CMakeFiles
+Makefile
+
+# Vim temporal files
+*.swp
+
+# Temporal files used for autocompletion on Vim
+compile_commands.json
