@@ -45,7 +45,44 @@ constexpr uint64_t dest_coord_y(const uint64_t coord_value) {
 }
 #endif
 
+constexpr int inversion_cost_for(uint64_t i, uint64_t j, uint64_t puz) {
+    uint64_t i_val = (puz >> (i*4)) & 0xfull;
+    uint64_t j_val = (puz >> (j*4)) & 0xfull;
+    return i_val && j_val && i_val < j_val ? 1 : 0;
+}
 
+constexpr int calc_number_of_inversions(uint64_t i, uint64_t j, uint64_t puz) {
+    return i < 16 
+        ? (j < 16 
+              ? (inversion_cost_for(i, j, puz) + calc_number_of_inversions(i, j+1, puz)) 
+              : calc_number_of_inversions(i+1, i+2, puz)
+          )
+        : 0;
+}
+
+static_assert(calc_number_of_inversions(0, 1, 0xd2a3'1c84'5096'feb7) == 41);
+static_assert(calc_number_of_inversions(0, 1, 0x391f'eb46'd0ac'2785) == 56);
+
+constexpr int get_row_of_0(uint64_t p, uint64_t puz) {
+    return p > 15
+        ? 0 
+        : ((puz & 0xfull) == 0 
+                ? p / 4 
+                : get_row_of_0(p+1, puz >> 4)
+          );
+}
+
+static_assert(get_row_of_0(0, 0xd2a3'1c84'5096'feb7) == 1);
+static_assert(get_row_of_0(0, 0x391f'e0b4'6dac'2785) == 2);
+
+constexpr bool is_solvable(uint64_t puz) {
+    return get_row_of_0(0, puz) % 2 ? (calc_number_of_inversions(0, 1, puz) & 1) : !(calc_number_of_inversions(0, 1, puz) & 1);
+}
+
+static_assert(is_solvable(0x1234'5678'9abc'def0) == true);
+static_assert(is_solvable(0xd2a3'1c84'5096'feb7) == true);
+static_assert(is_solvable(0x391f'eb46'd0ac'2785) == false);
+static_assert(is_solvable(0x0123'4567'89ab'cdef) == false);
 
 template<uint64_t Puz, uint64_t Pos>
 constexpr uint64_t ManhattanDistance_helper = 
@@ -178,6 +215,22 @@ template<class ProcList>
 struct resolv : resolv_helper<std::is_same_v<typename tlist_head_t<ProcList>::puz, PuzzleResolved>, ProcList> {};
 
 
+template<bool Solvable, class Puzzle>
+struct try_resolve_helper{
+    using type = resolv_t<initial_GameState<Puzzle>>;
+};
+
+template<class Puzzle>
+struct try_resolve_helper<false, Puzzle> {
+    using type = Nothing;
+};
+
+template<class Puzzle>
+struct try_resolve {
+    using type = typename try_resolve_helper<is_solvable(Puzzle::value), Puzzle>::type;
+};
+
+
 #include <iostream>
 
 
@@ -198,16 +251,21 @@ struct show_path : show_path<typename Path::previous> {
 };
 
 template<>
-struct show_path<Nothing> {};
+struct show_path<Nothing> {
+    show_path() {
+        std::cout << std::endl;
+    }
+};
 
 int main() {
     //using to_solve = Long<0x1230'5674'9ab8'defc>;
     //using to_solve = Long<0x5123'9674'dab8'0efc>;
-    using to_solve = Long<0x01234'5678'9abc'def>;
+    using to_solve = Long<0x0123'4567'89ab'cdef>;
     //using to_solve = Long<0x1234'5678'9abc'def0>;
     
-    using solution = resolv_t<initial_GameState<to_solve>>;
+    using solution = typename try_resolve<to_solve>::type;
     show_path<solution>{};
+   //     std::cout << "The puzzla cannot be solved" << std::endl;
     
     return 0;
 }
