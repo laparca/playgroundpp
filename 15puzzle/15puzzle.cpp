@@ -344,7 +344,7 @@ int main(int argc, const char** argv) {
     int visited_inserts = 0;
     int visited_replaced = 0;
     struct sigaction action;
-    Board initial_board = 0x01234'5678'9abc'def;
+    Board initial_board = 0x0123'4567'89ab'cdef;
 
     action.sa_handler = sig_usr1_received;
     action.sa_flags = 0;
