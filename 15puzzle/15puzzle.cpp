@@ -11,6 +11,7 @@
 #include <signal.h>
 #include <string_view>
 #include <playgroundcpp/steps.hh>
+#include <optional>
 
 struct coord {
     int x;
