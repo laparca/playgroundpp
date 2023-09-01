@@ -1,3 +1,5 @@
+project(metaprogramming_15puzzle)
+
 add_compile_options(-ftemplate-depth=999999 -Wall)
 
 add_executable(15puzzle 15puzzle.cpp)

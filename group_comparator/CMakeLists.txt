@@ -1,3 +1,5 @@
+project(group_comparator)
+
 add_executable(gruop_comparator_c11 group_comparator.cpp)
 target_compile_features(gruop_comparator_c11 PUBLIC cxx_std_11)
 

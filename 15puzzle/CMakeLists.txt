@@ -1,3 +1,5 @@
+project(15puzzle)
+
 add_compile_options(-Wall -Wextra -pedantic -Werror -g3)
 
 add_executable(15puzzle_normal 15puzzle.cpp)
