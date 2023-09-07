@@ -14,6 +14,8 @@
 #include <memory>
 #include <vector>
 #include <atomic>
+#include <condition_variable>
+#include <mutex>
 
 namespace laparca {
 /** 
@@ -413,4 +415,85 @@ chanel<T>& operator<<(chanel<T>& q, const T& v) {
 	q.push(v);
 	return q;
 }
+
+
+
+template<typename T, typename Allocator = std::allocator<T>>
+struct chanel0_mux: public chanel_interface<T, Allocator> {
+	using allocator_type = Allocator;
+	using value_type = T;
+	using reference = value_type&;
+	using universal_reference = value_type&&;
+	using const_reference = value_type const&;
+	using pointer = value_type*;
+	using const_pointer = value_type const*;
+
+    virtual ~chanel0_mux() override {
+        if (!is_closed()) close();
+    }    
+
+    bool push(const_reference value) override {
+		return internal_push(value, false);
+	}
+
+	bool push(universal_reference value) override {
+		return internal_push(std::move(value), true);
+	}
+
+	std::optional<value_type> pop() override {
+        std::lock_guard lck(mux_);
+        cond_.wait(lck, [this]{ return next_ == nullptr && !closed_; });
+
+		if (is_closed()) return {};
+
+		auto defer = deferred([this]() {
+			cond_.notify_all();
+		});
+
+		if (move)
+			return std::move(const_cast<reference>(*next_));
+		else
+			return *next_;
+	}
+
+	void close() override {
+		closed_ = true;
+		cond_.notify_all();
+	}
+	bool is_closed() override {
+		return closed_;
+	}
+	size_t size() override {
+		return 0;
+	}
+
+	size_t capacity() override {
+		return 0;
+	}
+private:
+	template<typename U>
+	bool internal_push(U&& value, bool move) {
+		std::lock_guard lck(mux_);
+		cond_.wait(lck, [this]{ return !closed_ && next_ != nullptr; });
+
+		if (is_closed()) return false;
+
+		this->move = move;
+
+		next_.notify_all();
+
+		// Wait until the value is readed
+		cond_.wait(lck);
+
+        return !is_closed();
+	}
+
+private:
+    pointer next_;
+    std::mutex mux_;
+    std::condition_variable cond_;
+	bool move = false;
+	bool closed_ = false;
+};
+
 } // namespace laparca
