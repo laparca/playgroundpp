@@ -188,6 +188,7 @@ struct chanelN : public chanel_interface<T, Allocator> {
 		EMPTY,
 		WRITING,
 		CAN_READ,
+		CAN_READ_CLOSING,
 		READING,
 		CLOSED
 	};
@@ -222,24 +223,25 @@ struct chanelN : public chanel_interface<T, Allocator> {
 
 		// wait to the slot to be enabled to write
 		auto status = buffer_status_[pos].load();
-		while(!is_closed()) {
-			while (!is_closed() && status != CAN_READ) {
+		while(status != CLOSED) {
+			while (status != CLOSED && status != CAN_READ && status != CAN_READ_CLOSING) {
 				buffer_status_[pos].wait(status);
 				status = buffer_status_[pos].load();
 			}
+       
+			if (status == CLOSED) return {};
 
-			status = CAN_READ;
 			if(buffer_status_[pos].compare_exchange_weak(status, READING)) {
 				break;
 			}
 		}
-
-        if (is_closed()) return {};
+			
+		if (status == CLOSED) return {};
 
 		auto defer = deferred([&,this]() {
 			size_ --;
 			std::destroy_at(&buffer_[pos]);
-			buffer_status_[pos].store(EMPTY);
+			buffer_status_[pos].store(is_closed() ? CLOSED : EMPTY);
 			buffer_status_[pos].notify_one();
 		});
 
@@ -247,17 +249,25 @@ struct chanelN : public chanel_interface<T, Allocator> {
 	}
 
 	void close() override {
+		closed_ = true;
 		for (auto& status: buffer_status_) {
-			status.store(CLOSED);
+			auto expected_status = EMPTY;
+			// Only mark as closed the empty cells
+			status.compare_exchange_weak(expected_status, CLOSED);
+			expected_status = CAN_READ;
+			status.compare_exchange_weak(expected_status, CAN_READ_CLOSING);
 			status.notify_all();
 		}
 	}
+
 	bool is_closed() override {
-		return buffer_status_[0] == CLOSED;
+		return closed_;
 	}
+
 	size_t size() override {
 		return size_;
 	}
+
 	size_t capacity() override {
 		return capacity_;
 	}
@@ -297,6 +307,7 @@ private:
 
 private:
 	std::atomic<const T*> next_ = nullptr;
+	bool closed_ = false;
 	Allocator allocator_;
 	size_t capacity_;
 	std::atomic<size_t> size_;

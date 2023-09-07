@@ -1,5 +1,7 @@
-#include <chanel.hpp>
+#include <laparca/chanel.hpp>
 #include <gtest/gtest.h>
+#include <thread_pool.hpp>
+#include <array>
 
 TEST(chanel0_test, close) {
     laparca::chanel0<size_t> c;
@@ -105,7 +107,7 @@ TEST(chanelN_test, normal_behaviour) {
 }
 
 TEST(chanel, iteration_without_buffer) {
-    size_t values[]{2, 6, 42};
+    std::array<size_t, 3> values{2, 6, 42};
 
     laparca::chanel<size_t> c;
     std::thread consumer{[&]{
@@ -140,4 +142,48 @@ TEST(chanel, iteration_with_buffer) {
     
     c.close();
     consumer.join();
+}
+
+constexpr size_t sum_of_serie(size_t first, size_t last) {
+    return (last + first) * (last - first + 1) / 2;
+}
+
+TEST(chanel, do_the_sum_of_values) {
+	laparca::chanel<ssize_t> q(20);
+	constexpr ssize_t totalElements = 10'000'000;
+	constexpr size_t numConsumers = 10;
+	constexpr ssize_t numProducers = 10;
+    std::atomic<ssize_t> producersCount = 0;
+    std::atomic<size_t> accum = 0;
+
+	using namespace std::string_literals;
+
+    laparca::thread_pool consumers(numConsumers, [&q, &accum]() {
+        size_t partial_accum = 0;
+        for (const auto value : q) {
+            partial_accum += value;
+        }
+
+        accum += partial_accum;
+    });
+    
+    laparca::thread_pool producers(numProducers, [&q, &producersCount, totalElements, numProducers](){
+        const ssize_t producer = producersCount++;
+
+		const ssize_t elementsToProduce = (totalElements / numProducers) + (producer + 1 == numProducers ? (totalElements % numProducers) : 0);
+		const ssize_t start = (totalElements / numProducers) * producer;
+
+		for (ssize_t i = 0; i < elementsToProduce; ++i) {
+			q << (i+start+1);
+		}
+	});
+
+    producers.join();
+	
+    q.close();
+
+    consumers.join();
+	
+
+    ASSERT_EQ(accum, sum_of_serie(1, totalElements));
 }
